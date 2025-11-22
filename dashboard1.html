@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
+    <!-- <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script> -->
+     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .header-info {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .nav-buttons {
+            margin-top: 15px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .chart-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .chart-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .control-group select {
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .chart-container {
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fcc;
+            margin-top: 15px;
+        }
+
+        .tip {
+            background: #f0f7ff;
+            color: #0066cc;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📊 Interactive Data Dashboard</h1>
+        <div class="header-info">
+            File: <strong>{{ filename }}</strong> |
+            Rows: <strong>{{ rows }}</strong> |
+            Columns: <strong>{{ columns }}</strong>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="window.location.href='/'">📤 Upload New File</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Bar Chart Section -->
+        <div class="chart-section">
+            <h2>📊 Bar Chart</h2>
+            <div class="tip">💡 Choose a TEXT column for Dimension and a NUMBER column for Measure. Optionally add a
+                second dimension for grouped/faceted bars</div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="barDimension1">Dimension 1 (X-Axis)</label>
+                    <select id="barDimension1">
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}">{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="barMeasure">Measure (Numeric)</label>
+                    <select id="barMeasure">
+                        {% for meas in measures %}
+                        <option value="{{ meas }}">{{ meas }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="barDimension2">Dimension 2 (Color/Facet) - Optional</label>
+                    <select id="barDimension2">
+                        <option value="">None</option>
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}">{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="barUseFacet"> Use Faceted Layout
+                    </label>
+                    <small style="color: #999; margin-top: 5px;">Facets create separate subplots for each
+                        category</small>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn-generate" onclick="generateBarChart()">Generate Chart</button>
+                </div>
+            </div>
+
+            <div id="barChart" class="chart-container">
+                Select dimension and measure, then click "Generate Chart"
+            </div>
+            <div id="barError"></div>
+        </div>
+
+        <!-- Pie Chart Section -->
+        <div class="chart-section">
+            <h2>🥧 Pie Chart</h2>
+            <div class="tip">💡 Best for showing proportions and distributions</div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="pieDimension">Dimension (Category)</label>
+                    <select id="pieDimension">
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}">{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="pieMeasure">Measure (Numeric)</label>
+                    <select id="pieMeasure">
+                        {% for meas in measures %}
+                        <option value="{{ meas }}">{{ meas }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn-generate" onclick="generatePieChart()">Generate Chart</button>
+                </div>
+            </div>
+
+            <div id="pieChart" class="chart-container">
+                Select dimension and measure, then click "Generate Chart"
+            </div>
+            <div id="pieError"></div>
+        </div>
+
+        <!-- Sunburst Chart Section -->
+        {% if dimensions|length >= 3 %}
+        <div class="chart-section">
+            <h2>☀️ Sunburst Chart</h2>
+            <div class="tip">💡 Select THREE DIFFERENT dimensions to show hierarchical data</div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="sunDim1">Level 1 (Outer)</label>
+                    <select id="sunDim1">
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}">{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="sunDim2">Level 2 (Middle)</label>
+                    <select id="sunDim2">
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}" {% if loop.index==2 %}selected{% endif %}>{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="sunDim3">Level 3 (Inner)</label>
+                    <select id="sunDim3">
+                        {% for dim in dimensions %}
+                        <option value="{{ dim }}" {% if loop.index==3 %}selected{% endif %}>{{ dim }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="sunMeasure">Measure (Numeric)</label>
+                    <select id="sunMeasure">
+                        {% for meas in measures %}
+                        <option value="{{ meas }}">{{ meas }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-generate" onclick="generateSunburstChart()">Generate Chart</button>
+
+            <div id="sunburstChart" class="chart-container">
+                Select three different dimensions and one measure, then click "Generate Chart"
+            </div>
+            <div id="sunburstError"></div>
+        </div>
+        {% else %}
+        <div class="chart-section">
+            <h2>☀️ Sunburst Chart</h2>
+            <div class="error">
+                ⚠️ Sunburst chart requires at least 3 dimensions. Your dataset has only {{ dimensions|length }}
+                dimension(s).
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        async function generateBarChart() {
+            const dimension1 = document.getElementById('barDimension1').value;
+            const dimension2 = document.getElementById('barDimension2').value;
+            const measure = document.getElementById('barMeasure').value;
+            const useFacet = document.getElementById('barUseFacet').checked;
+
+            const chartDiv = document.getElementById('barChart');
+            const errorDiv = document.getElementById('barError');
+
+            // Validation
+            if (!dimension1 || !measure) {
+                errorDiv.innerHTML = '<div class="error">❌ Please select Dimension 1 and Measure</div>';
+                return;
+            }
+
+            chartDiv.innerHTML = '<div class="loading">⏳ Generating chart...</div>';
+            errorDiv.innerHTML = '';
+
+            const requestData = {
+                dimension1: dimension1,
+                dimension2: dimension2 && dimension2.trim() ? dimension2 : '',
+                measure: measure,
+                use_facet: useFacet
+            };
+
+            console.log('Bar Chart Request:', requestData);
+
+            try {
+                const response = await fetch('/api/chart/bar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+                console.log('Bar Chart Response:', result);
+
+                if (response.ok) {
+                    const chartData = JSON.parse(result.chart);
+                    console.log('Chart Data:', chartData);
+                    Plotly.newPlot(chartDiv, chartData.data, chartData.layout, {responsive: true});
+                } else {
+                    chartDiv.innerHTML = '';
+                    errorDiv.innerHTML = `<div class="error">❌ ${result.error}</div>`;
+                    console.error('Chart Error:', result.error);
+                }
+            } catch (error) {
+                chartDiv.innerHTML = '';
+                errorDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+                console.error('Fetch Error:', error);
+            }
+        }
+
+        async function generatePieChart() {
+            const dimension = document.getElementById('pieDimension').value;
+            const measure = document.getElementById('pieMeasure').value;
+            const chartDiv = document.getElementById('pieChart');
+            const errorDiv = document.getElementById('pieError');
+
+            chartDiv.innerHTML = '<div class="loading">⏳ Generating chart...</div>';
+            errorDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/chart/pie', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dimension, measure})
+                });
+
+                const result = await response.json();
+                console.log('Pie Chart Response:', result);
+
+                if (response.ok) {
+                    const chartData = JSON.parse(result.chart);
+                    Plotly.newPlot(chartDiv, chartData.data, chartData.layout, {responsive: true});
+                } else {
+                    chartDiv.innerHTML = '';
+                    errorDiv.innerHTML = `<div class="error">❌ ${result.error}</div>`;
+                }
+            } catch (error) {
+                chartDiv.innerHTML = '';
+                errorDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function generateSunburstChart() {
+            const dim1 = document.getElementById('sunDim1').value;
+            const dim2 = document.getElementById('sunDim2').value;
+            const dim3 = document.getElementById('sunDim3').value;
+            const measure = document.getElementById('sunMeasure').value;
+            const chartDiv = document.getElementById('sunburstChart');
+            const errorDiv = document.getElementById('sunburstError');
+
+            chartDiv.innerHTML = '<div class="loading">⏳ Generating chart...</div>';
+            errorDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/chart/sunburst', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dim1, dim2, dim3, measure})
+                });
+
+                const result = await response.json();
+                  console.log('Sunburst Chart Response:', result);
+                if (response.ok) {
+                    const chartData = JSON.parse(result.chart);
+                    Plotly.newPlot(chartDiv, chartData.data, chartData.layout, {responsive: true});
+                } else {
+                    chartDiv.innerHTML = '';
+                    errorDiv.innerHTML = `<div class="error">❌ ${result.error}</div>`;
+                }
+            } catch (error) {
+                chartDiv.innerHTML = '';
+                errorDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+
+</html>
